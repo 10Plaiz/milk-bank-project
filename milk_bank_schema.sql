@@ -28,6 +28,17 @@ begin
 end;
 $$;
 
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  full_name text not null,
+  role text not null check (role in ('admin', 'staff')),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint profiles_email_normalized check (email = lower(email))
+);
+
 create or replace function public.current_profile_is_admin()
 returns boolean
 language sql
@@ -63,17 +74,6 @@ $$;
 -- ---------------------------------------------------------------------------
 -- People and access
 -- ---------------------------------------------------------------------------
-
-create table public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  email text not null unique,
-  full_name text not null,
-  role text not null check (role in ('admin', 'staff')),
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint profiles_email_normalized check (email = lower(email))
-);
 
 create trigger profiles_set_updated_at
 before update on public.profiles
