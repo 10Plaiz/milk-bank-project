@@ -1,0 +1,285 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE CHECK (email = lower(email)),
+  full_name text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['admin'::text, 'staff'::text])),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+
+CREATE TABLE public.donors (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  dtn_number bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
+  dtn text DEFAULT ('DTN-'::text || lpad((dtn_number)::text, 6, '0'::text)) UNIQUE,
+  full_name text NOT NULL,
+  date_of_birth date,
+  address text NOT NULL,
+  contact_number text CHECK (contact_number IS NULL OR contact_number ~ '^[0-9+() -]{7,20}$'::text),
+  email text CHECK (email IS NULL OR email = lower(email)),
+  occupation text,
+  civil_status text CHECK (civil_status = ANY (ARRAY['single'::text, 'married'::text, 'separated'::text, 'widowed'::text])),
+  classification text NOT NULL CHECK (classification = ANY (ARRAY['community'::text, 'private'::text, 'institutional'::text])),
+  primary_program text NOT NULL CHECK (primary_program = ANY (ARRAY['supsup_todo'::text, 'milky_way'::text, 'moms_act'::text])),
+  screening_status text NOT NULL DEFAULT 'pending'::text CHECK (screening_status = ANY (ARRAY['pending'::text, 'passed'::text, 'failed'::text, 'not_required'::text])),
+  is_active boolean NOT NULL DEFAULT true,
+  notes text,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT donors_pkey PRIMARY KEY (id),
+  CONSTRAINT donors_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.donor_screenings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  donor_id uuid NOT NULL,
+  program text NOT NULL CHECK (program = ANY (ARRAY['supsup_todo'::text, 'milky_way'::text, 'moms_act'::text])),
+  screening_result text NOT NULL CHECK (screening_result = ANY (ARRAY['pending'::text, 'passed'::text, 'failed'::text, 'not_required'::text])),
+  travel_history_5_years boolean,
+  tuberculosis_history boolean,
+  hepatitis_b_history boolean,
+  mastitis_history boolean,
+  syphilis_history boolean,
+  herpes_or_std_history boolean,
+  blood_transfusion_last_12_months boolean,
+  organ_transplant_history boolean,
+  alcohol_last_24_hours boolean,
+  smoking_history boolean,
+  illegal_drug_use boolean,
+  strict_vegan_diet boolean,
+  current_medications text,
+  last_delivery_date date,
+  counseling_completed_at timestamp with time zone,
+  interview_completed_at timestamp with time zone,
+  consent_signed_at timestamp with time zone,
+  screened_by uuid,
+  screened_at timestamp with time zone NOT NULL DEFAULT now(),
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT donor_screenings_pkey PRIMARY KEY (id),
+  CONSTRAINT donor_screenings_donor_id_fkey FOREIGN KEY (donor_id) REFERENCES public.donors(id),
+  CONSTRAINT donor_screenings_screened_by_fkey FOREIGN KEY (screened_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.collections (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ctn_number bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
+  ctn text DEFAULT ('CTN-'::text || lpad((ctn_number)::text, 6, '0'::text)) UNIQUE,
+  donor_id uuid NOT NULL,
+  program text NOT NULL CHECK (program = ANY (ARRAY['supsup_todo'::text, 'milky_way'::text, 'moms_act'::text])),
+  collection_mode text NOT NULL CHECK (collection_mode = ANY (ARRAY['field_collection'::text, 'pickup'::text])),
+  collection_point text,
+  collected_at timestamp with time zone NOT NULL,
+  pickup_at timestamp with time zone,
+  volume_ml integer NOT NULL CHECK (volume_ml >= 30 AND volume_ml <= 240),
+  age_of_baby_days integer CHECK (age_of_baby_days IS NULL OR age_of_baby_days >= 0),
+  cold_chain_verified boolean NOT NULL DEFAULT false,
+  collected_by uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT collections_pkey PRIMARY KEY (id),
+  CONSTRAINT collections_donor_id_fkey FOREIGN KEY (donor_id) REFERENCES public.donors(id),
+  CONSTRAINT collections_collected_by_fkey FOREIGN KEY (collected_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.batches (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_number_seq bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
+  batch_number text DEFAULT ('BATCH-'::text || lpad((batch_number_seq)::text, 6, '0'::text)) UNIQUE,
+  status text NOT NULL DEFAULT 'raw'::text CHECK (status = ANY (ARRAY['raw'::text, 'pre_testing'::text, 'pre_test_passed'::text, 'pasteurized'::text, 'post_testing'::text, 'ready'::text, 'dispensed'::text, 'discarded'::text])),
+  program text NOT NULL CHECK (program = ANY (ARRAY['supsup_todo'::text, 'milky_way'::text, 'moms_act'::text, 'mixed'::text])),
+  total_volume_ml integer NOT NULL DEFAULT 0 CHECK (total_volume_ml >= 0),
+  discarded_reason text,
+  expires_at timestamp with time zone,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT batches_pkey PRIMARY KEY (id),
+  CONSTRAINT batches_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.batch_collections (
+  batch_id uuid NOT NULL,
+  collection_id uuid NOT NULL,
+  volume_ml integer NOT NULL CHECK (volume_ml > 0),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT batch_collections_pkey PRIMARY KEY (batch_id, collection_id),
+  CONSTRAINT batch_collections_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
+  CONSTRAINT batch_collections_collection_id_fkey FOREIGN KEY (collection_id) REFERENCES public.collections(id)
+);
+
+CREATE TABLE public.lab_results (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_id uuid NOT NULL,
+  stage text NOT NULL CHECK (stage = ANY (ARRAY['pre_pasteurization'::text, 'post_pasteurization'::text])),
+  sample_volume_ml numeric NOT NULL CHECK (sample_volume_ml > 0::numeric AND sample_volume_ml <= 5::numeric),
+  sent_to_lab_at timestamp with time zone NOT NULL,
+  expected_result_at timestamp with time zone NOT NULL,
+  result text NOT NULL DEFAULT 'pending'::text CHECK (result = ANY (ARRAY['pending'::text, 'passed'::text, 'failed'::text])),
+  result_received_at timestamp with time zone,
+  recorded_by uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT lab_results_pkey PRIMARY KEY (id),
+  CONSTRAINT lab_results_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
+  CONSTRAINT lab_results_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.pasteurization_records (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  batch_id uuid NOT NULL UNIQUE,
+  pasteurized_at timestamp with time zone NOT NULL,
+  temperature_c numeric NOT NULL CHECK (temperature_c >= 60.0 AND temperature_c <= 65.0),
+  duration_minutes integer NOT NULL CHECK (duration_minutes >= 25 AND duration_minutes <= 40),
+  performed_by uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT pasteurization_records_pkey PRIMARY KEY (id),
+  CONSTRAINT pasteurization_records_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id),
+  CONSTRAINT pasteurization_records_performed_by_fkey FOREIGN KEY (performed_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.bottles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  bottle_number_seq bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
+  bottle_number text DEFAULT ('BTL-'::text || lpad((bottle_number_seq)::text, 6, '0'::text)) UNIQUE,
+  batch_id uuid NOT NULL,
+  volume_ml integer NOT NULL CHECK (volume_ml > 0),
+  remaining_volume_ml integer NOT NULL CHECK (remaining_volume_ml >= 0),
+  status text NOT NULL DEFAULT 'available'::text CHECK (status = ANY (ARRAY['available'::text, 'reserved'::text, 'dispensed'::text, 'discarded'::text, 'expired'::text])),
+  storage_location text,
+  expires_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bottles_pkey PRIMARY KEY (id),
+  CONSTRAINT bottles_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batches(id)
+);
+
+CREATE TABLE public.beneficiaries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  guardian_name text NOT NULL,
+  baby_name text NOT NULL,
+  hospital text,
+  nicu_eligible boolean NOT NULL DEFAULT false,
+  contact_number text,
+  contact_email text CHECK (contact_email IS NULL OR contact_email = lower(contact_email)),
+  age_of_baby_days integer CHECK (age_of_baby_days IS NULL OR age_of_baby_days >= 0),
+  notes text,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT beneficiaries_pkey PRIMARY KEY (id),
+  CONSTRAINT beneficiaries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.inquiries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beneficiary_id uuid NOT NULL,
+  inquiry_type text NOT NULL CHECK (inquiry_type = ANY (ARRAY['walk_in'::text, 'hotline_call'::text])),
+  status text NOT NULL DEFAULT 'waiting'::text CHECK (status = ANY (ARRAY['waiting'::text, 'notified'::text, 'fulfilled'::text, 'cancelled'::text])),
+  requested_volume_ml integer CHECK (requested_volume_ml IS NULL OR requested_volume_ml > 0),
+  nicu_confirmed boolean NOT NULL DEFAULT false,
+  requested_at timestamp with time zone NOT NULL DEFAULT now(),
+  notified_at timestamp with time zone,
+  fulfilled_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  handled_by uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT inquiries_pkey PRIMARY KEY (id),
+  CONSTRAINT inquiries_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.beneficiaries(id),
+  CONSTRAINT inquiries_handled_by_fkey FOREIGN KEY (handled_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.pricing_config (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  price_per_ml numeric NOT NULL CHECK (price_per_ml >= 0::numeric),
+  bottle_deposit_amount numeric NOT NULL DEFAULT 0 CHECK (bottle_deposit_amount >= 0::numeric),
+  effective_from timestamp with time zone NOT NULL DEFAULT now(),
+  effective_to timestamp with time zone,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT pricing_config_pkey PRIMARY KEY (id),
+  CONSTRAINT pricing_config_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.dispensing_records (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  beneficiary_id uuid NOT NULL,
+  inquiry_id uuid,
+  pricing_config_id uuid,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'confirmed'::text, 'cancelled'::text])),
+  volume_ml integer NOT NULL CHECK (volume_ml > 0),
+  fee_per_ml numeric NOT NULL DEFAULT 2.00 CHECK (fee_per_ml >= 0::numeric),
+  bottle_deposit_amount numeric NOT NULL DEFAULT 0 CHECK (bottle_deposit_amount >= 0::numeric),
+  total_fee numeric DEFAULT (((volume_ml)::numeric * fee_per_ml) + bottle_deposit_amount),
+  deposit_paid boolean NOT NULL DEFAULT false,
+  clinical_abstract_verified boolean NOT NULL DEFAULT false,
+  prescription_verified boolean NOT NULL DEFAULT false,
+  cooler_with_ice_verified boolean NOT NULL DEFAULT false,
+  dispensed_by uuid,
+  dispensed_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT dispensing_records_pkey PRIMARY KEY (id),
+  CONSTRAINT dispensing_records_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.beneficiaries(id),
+  CONSTRAINT dispensing_records_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES public.inquiries(id),
+  CONSTRAINT dispensing_records_pricing_config_id_fkey FOREIGN KEY (pricing_config_id) REFERENCES public.pricing_config(id),
+  CONSTRAINT dispensing_records_dispensed_by_fkey FOREIGN KEY (dispensed_by) REFERENCES public.profiles(id)
+);
+
+CREATE TABLE public.dispensing_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  dispensing_record_id uuid NOT NULL,
+  bottle_id uuid NOT NULL,
+  volume_ml integer NOT NULL CHECK (volume_ml > 0),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT dispensing_items_pkey PRIMARY KEY (id),
+  CONSTRAINT dispensing_items_dispensing_record_id_fkey FOREIGN KEY (dispensing_record_id) REFERENCES public.dispensing_records(id),
+  CONSTRAINT dispensing_items_bottle_id_fkey FOREIGN KEY (bottle_id) REFERENCES public.bottles(id)
+);
+
+CREATE TABLE public.email_notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  inquiry_id uuid,
+  beneficiary_id uuid NOT NULL,
+  trigger_event text NOT NULL CHECK (trigger_event = ANY (ARRAY['milk_available'::text, 'dispensing_confirmation'::text, 'status_update'::text])),
+  recipient_email text NOT NULL CHECK (recipient_email = lower(recipient_email)),
+  subject text NOT NULL,
+  body text NOT NULL,
+  status text NOT NULL DEFAULT 'queued'::text CHECK (status = ANY (ARRAY['queued'::text, 'sent'::text, 'failed'::text, 'cancelled'::text])),
+  queued_at timestamp with time zone NOT NULL DEFAULT now(),
+  sent_at timestamp with time zone,
+  failed_at timestamp with time zone,
+  error_message text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT email_notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT email_notifications_inquiry_id_fkey FOREIGN KEY (inquiry_id) REFERENCES public.inquiries(id),
+  CONSTRAINT email_notifications_beneficiary_id_fkey FOREIGN KEY (beneficiary_id) REFERENCES public.beneficiaries(id)
+);
+
+CREATE TABLE public.audit_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  table_name text NOT NULL,
+  record_id uuid,
+  action text NOT NULL CHECK (action = ANY (ARRAY['insert'::text, 'update'::text, 'delete'::text])),
+  changed_by uuid,
+  changed_at timestamp with time zone NOT NULL DEFAULT now(),
+  old_row jsonb,
+  new_row jsonb,
+  CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT audit_logs_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.profiles(id)
+);
