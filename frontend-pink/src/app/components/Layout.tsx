@@ -282,41 +282,7 @@ export function Layout({ user, currentScreen, onNavigate, onLogout, children }: 
           </div>
 
           <div className="flex items-center gap-2">
-            <AnimatePresence>
-              {searchOpen ? (
-                <motion.div
-                  initial={{ width: 32, opacity: 0 }}
-                  animate={{ width: 220, opacity: 1 }}
-                  exit={{ width: 32, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                  className="relative"
-                >
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#636260]" />
-                  <input
-                    autoFocus
-                    placeholder="Search anything..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl text-sm outline-none"
-                    style={{ background: '#F8F0F4', color: '#322e2d', border: '1px solid rgba(238,164,187,0.35)' }}
-                    onBlur={() => setSearchOpen(false)}
-                  />
-                </motion.div>
-              ) : (
-                <button
-                  onClick={() => setSearchOpen(true)}
-                  className="p-2 rounded-xl hover:bg-[#F8F0F4] transition-colors"
-                >
-                  <Search className="w-4 h-4 text-[#636260]" />
-                </button>
-              )}
-            </AnimatePresence>
 
-            <button className="relative p-2 rounded-xl hover:bg-[#F8F0F4] transition-colors">
-              <Bell className="w-4 h-4 text-[#636260]" />
-              <span
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                style={{ background: '#eea4bb', boxShadow: '0 0 0 2px #F8F7F5' }}
-              />
-            </button>
 
             <div className="relative">
               <button

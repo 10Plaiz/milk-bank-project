@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, ChevronRight, Droplets, Eye, EyeOff, Heart, Shield, Sparkles, UserPlus, Zap } from 'lucide-react'
+import { Droplets, Eye, EyeOff, Heart, Shield, Zap } from 'lucide-react'
 import type { AccessRole, CreateAccessAccountInput } from '../../types'
+import { supabase } from '../../../lib/supabase'
 
 interface LoginScreenProps {
   onLogin: (credentials: { email: string; password: string }) => void
@@ -10,14 +11,6 @@ interface LoginScreenProps {
   error?: string
   prefillEmail?: string
 }
-
-const ROLE_OPTIONS: Array<{ label: AccessRole; description: string; department: string; initials: string }> = [
-  { label: 'Doctor', description: 'Clinical oversight & approval authority', department: 'Clinical Oversight', initials: 'DR' },
-  { label: 'Nurse', description: 'Collection, dispensing, recipient support', department: 'Ward Operations', initials: 'NU' },
-  { label: 'Midwife', description: 'Field collection & donor coordination', department: 'Community Health', initials: 'MW' },
-  { label: 'Medical Technologist', description: 'Lab testing & pasteurization logging', department: 'Laboratory Services', initials: 'MT' },
-  { label: 'Admin', description: 'User administration & system control', department: 'System Administration', initials: 'AD' },
-]
 
 export function LoginScreen({ onLogin, onRegisterRequest, notice, error, prefillEmail }: LoginScreenProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -28,12 +21,31 @@ export function LoginScreen({ onLogin, onRegisterRequest, notice, error, prefill
   const [loading, setLoading] = useState(false)
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const submitTimerRef = useRef<number | null>(null)
+  const [stats, setStats] = useState({ donors: 0, mlReady: 0, waiting: 0 })
 
   useEffect(() => {
     if (prefillEmail) {
       setEmail(prefillEmail)
     }
   }, [prefillEmail])
+
+  useEffect(() => {
+    async function loadStats() {
+      const [donors, batches, inquiries] = await Promise.all([
+        supabase.from('donors').select('id', { count: 'exact' }),
+        supabase.from('batches').select('total_volume_ml').eq('status', 'ready'),
+        supabase.from('inquiries').select('id', { count: 'exact' }).eq('status', 'waiting')
+      ])
+      
+      const mlReady = (batches.data || []).reduce((sum, b) => sum + Number(b.total_volume_ml || 0), 0)
+      setStats({
+        donors: donors.count || 0,
+        mlReady,
+        waiting: inquiries.count || 0
+      })
+    }
+    void loadStats()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -78,69 +90,74 @@ export function LoginScreen({ onLogin, onRegisterRequest, notice, error, prefill
 
   return (
     <div className="min-h-screen flex" style={{ background: '#F8F7F5' }}>
-      <div className="hidden lg:flex flex-col justify-between w-[440px] shrink-0" style={{ background: '#322e2d' }}>
-        <div className="px-10 pt-10">
-          <div className="flex items-center gap-3 mb-16">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#eea4bb' }}>
-              <Droplets className="w-4.5 h-4.5" style={{ color: '#322e2d' }} />
+      <div className="hidden lg:flex flex-col justify-between w-[460px] shrink-0" style={{ background: '#322e2d' }}>
+        <div className="px-12 pt-12">
+          <div className="flex items-center gap-3 mb-20">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#eea4bb' }}>
+              <Droplets className="w-5 h-5" style={{ color: '#322e2d' }} />
             </div>
             <div>
-              <div className="text-sm text-white leading-none" style={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
+              <div className="text-[15px] text-white leading-none tracking-tight font-bold">
                 Mother's Reach
               </div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#7a7573', fontFamily: 'var(--font-family-mono)' }}>
+              <div className="text-[11px] mt-1 text-[#7a7573] font-mono">
                 by Makati Human Milk Bank
               </div>
             </div>
           </div>
 
-          <div className="mb-12">
-            <div className="text-3xl text-white mb-3 leading-tight" style={{ fontWeight: 700, letterSpacing: '-0.03em' }}>
-              Clinical access.
-              <br />
-              <span style={{ color: '#eea4bb' }}>One secure account layer.</span>
-            </div>
-            <p className="text-sm leading-relaxed" style={{ color: '#7a7573' }}>
-              Sign in to the Makati Human Milk Bank operations console or register a new staff account for a validated clinical role.
+          <div className="mb-14">
+            <h1 className="text-4xl text-white mb-6 leading-[1.15] font-bold tracking-tight">
+              Connecting Donors.<br />
+              <span style={{ color: '#eea4bb' }}>Nourishing Lives.</span>
+            </h1>
+            <p className="text-[15px] leading-relaxed text-[#9a9694] max-w-[340px]">
+              A premium clinical operations platform for the Makati Human Milk Bank, serving the smallest and most vulnerable lives since 2013.
             </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-6">
             {[
-              { icon: Shield, label: 'Supabase Auth backed sessions', color: '#eea4bb' },
-              { icon: Zap, label: 'Staff role assigned at registration', color: '#bdbdbb' },
-              { icon: Heart, label: 'Email confirmation required before sign-in', color: '#eea4bb' },
+              { icon: Shield, label: 'Medical-grade data security' },
+              { icon: Zap, label: 'Real-time batch lifecycle tracking' },
+              { icon: Heart, label: 'NICU-priority dispensing workflows' },
             ].map((feature) => {
               const Icon = feature.icon
               return (
-                <div key={feature.label} className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                    <Icon className="w-3.5 h-3.5" style={{ color: feature.color }} />
+                <div key={feature.label} className="flex items-center gap-4">
+                  <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}>
+                    <Icon className="w-4 h-4" style={{ color: '#eea4bb' }} />
                   </div>
-                  <span className="text-sm" style={{ color: '#9a9694' }}>{feature.label}</span>
+                  <span className="text-[15px] text-[#bdbdbb]">{feature.label}</span>
                 </div>
               )
             })}
           </div>
         </div>
 
-        <div className="px-10 pb-8">
-          <div className="grid grid-cols-3 gap-4 mb-6 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            {[
-              { value: '2', label: 'Access Roles' },
-              { value: '1', label: 'Source of Truth' },
-              { value: '0', label: 'Demo Accounts' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-lg text-white leading-none" style={{ fontWeight: 700, fontFamily: 'var(--font-family-mono)', color: '#eea4bb' }}>
-                  {stat.value}
-                </div>
-                <div className="text-[10px] mt-1" style={{ color: '#7a7573' }}>{stat.label}</div>
+        <div className="px-12 pb-10">
+          <div className="grid grid-cols-3 gap-6 mb-8 p-6 rounded-3xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="text-center">
+              <div className="text-xl text-white font-mono font-bold mb-1.5" style={{ color: '#eea4bb' }}>
+                {stats.donors}
               </div>
-            ))}
+              <div className="text-[11px] text-[#7a7573]">Active Donors</div>
+            </div>
+            <div className="text-center border-l border-r" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+              <div className="text-xl text-white font-mono font-bold mb-1.5" style={{ color: '#eea4bb' }}>
+                {stats.mlReady.toLocaleString()}
+              </div>
+              <div className="text-[11px] text-[#7a7573]">mL Ready</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xl text-white font-mono font-bold mb-1.5" style={{ color: '#eea4bb' }}>
+                {stats.waiting}
+              </div>
+              <div className="text-[11px] text-[#7a7573]">On Waiting List</div>
+            </div>
           </div>
-          <p className="text-[10px] leading-relaxed" style={{ color: '#5a5655' }}>
-            public.profiles stores role and activation state. Supabase Auth owns the password.
+          <p className="text-[11px] text-center" style={{ color: '#5a5655' }}>
+            RA 7600 compliant · Makati City Ordinance No. 2014-089 · DOH MOP 2014
           </p>
         </div>
       </div>
@@ -279,8 +296,6 @@ export function LoginScreen({ onLogin, onRegisterRequest, notice, error, prefill
                 </button>
               </div>
             </div>
-
-
 
             <motion.button
               type="submit"

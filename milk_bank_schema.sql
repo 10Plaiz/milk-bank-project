@@ -290,6 +290,7 @@ create table public.lab_results (
   result text not null default 'pending' check (result in ('pending', 'passed', 'failed')),
   result_received_at timestamptz,
   recorded_by uuid references public.profiles(id) on delete restrict,
+  recorded_by_name text,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
