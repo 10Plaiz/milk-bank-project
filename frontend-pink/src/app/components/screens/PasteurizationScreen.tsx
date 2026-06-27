@@ -32,22 +32,30 @@ export function PasteurizationScreen() {
   
   useEffect(() => { void load() }, [])
   
-  async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> { 
+  async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setSaving(true)
     const form = new FormData(event.currentTarget)
-    
-    await supabase.from('pasteurization_records').insert({ 
-      batch_id: String(form.get('batch_id')), 
+    const batchId = String(form.get('batch_id'))
+
+    const { error } = await supabase.from('pasteurization_records').insert({
+      batch_id: batchId,
       performed_by: String(form.get('performed_by')),
-      temperature_c: Number(form.get('temperature_c')), 
-      duration_minutes: Number(form.get('duration_minutes')), 
-      pasteurized_at: String(form.get('pasteurized_at')) || new Date().toISOString() 
+      temperature_c: Number(form.get('temperature_c')),
+      duration_minutes: Number(form.get('duration_minutes')),
+      pasteurized_at: String(form.get('pasteurized_at')) || new Date().toISOString(),
     })
-    
+
+    if (!error) {
+      // Advance batch from pre_test_passed -> pasteurized
+      await supabase.from('batches').update({ status: 'pasteurized' }).eq('id', batchId)
+    } else {
+      console.error('Pasteurization insert error:', error)
+    }
+
     setSaving(false)
     setOpen(false)
-    await load() 
+    await load()
   }
 
   function getBatchDtns(b: Batch) {

@@ -3,7 +3,7 @@ import { Archive, ClipboardList, Droplets, Send, Users, ArrowRight } from 'lucid
 import { PageHeader } from '../shared/PageHeader'
 import { supabase } from '../../../lib/supabase'
 import { toProgramLabel, toTitle } from '../../exportUtils'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, Legend } from 'recharts'
 import { motion } from 'motion/react'
 
 type Batch = { id: string; status: string; program: string; total_volume_ml: number }
@@ -48,7 +48,8 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
     { id: 'pasteurized', label: 'Pasteurized', hex: '#FF97B7' },
     { id: 'post_testing', label: 'Post-Test', hex: '#FFA6C1' },
     { id: 'ready', label: 'Ready', hex: '#FF87AB' },
-    { id: 'dispensed', label: 'Dispensed', hex: '#FF5D8F' }
+    { id: 'dispensed', label: 'Dispensed', hex: '#FF5D8F' },
+    { id: 'discarded', label: 'Discarded', hex: '#F08080' },
   ]
 
   const pipelineData = pipelineStages.map(stage => {
@@ -57,15 +58,26 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
     return { ...stage, count: stageBatches.length, volume }
   })
 
-  const monthlyDataMap = new Map<string, any>()
+  const PROGRAM_COLORS: Record<string, string> = {
+    supsup_todo: '#f472b6',
+    milky_way:   '#3f3f46',
+    moms_act:    '#fb923c',
+  }
+  const PROGRAM_LABELS: Record<string, string> = {
+    supsup_todo: 'Supsup Todo',
+    milky_way:   'Milky Way',
+    moms_act:    "Mom's Act",
+  }
+
+  const monthlyDataMap = new Map<string, Record<string, number>>()
   reports.forEach(r => {
     const m = r.report_month ? new Date(r.report_month).toLocaleString('default', { month: 'short' }) : 'Unknown'
-    if (!monthlyDataMap.has(m)) monthlyDataMap.set(m, { name: m, total: 0 })
-    const entry = monthlyDataMap.get(m)
+    if (!monthlyDataMap.has(m)) monthlyDataMap.set(m, { name: m as unknown as number })
+    const entry = monthlyDataMap.get(m)!
     entry[r.program] = (entry[r.program] || 0) + Number(r.raw_collected_ml || 0)
-    entry.total += Number(r.raw_collected_ml || 0)
   })
   const monthlyChartData = Array.from(monthlyDataMap.values())
+  const activePrograms = Array.from(new Set(reports.map(r => r.program)))
 
   const programDataMap = new Map<string, number>()
   reports.forEach(r => {
@@ -126,11 +138,21 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
               <LineChart data={monthlyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#a1a1aa', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
                   cursor={{ stroke: '#fce7f3', strokeWidth: 2 }}
                 />
-                <Line type="monotone" dataKey="total" stroke="#f472b6" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f472b6', stroke: '#fff', strokeWidth: 3 }} />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value) => <span style={{ fontSize: 11, color: '#71717a' }}>{PROGRAM_LABELS[value] ?? value}</span>}
+                />
+                {activePrograms.length > 0
+                  ? activePrograms.map(prog => (
+                      <Line key={prog} type="monotone" dataKey={prog} stroke={PROGRAM_COLORS[prog] ?? '#a1a1aa'} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} />
+                    ))
+                  : <Line type="monotone" dataKey="total" stroke="#f472b6" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#f472b6', stroke: '#fff', strokeWidth: 3 }} />
+                }
               </LineChart>
             </ResponsiveContainer>
           </div>
