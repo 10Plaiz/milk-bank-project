@@ -75,17 +75,20 @@ export function DispensingScreen({ user }: { user: AppUser }) {
     if (!selectedRecipient || !selectedBottle || !dispenseVolume) return
     setSaving(true)
     const volume = Number(dispenseVolume)
-    const { data } = await supabase.from('dispensing_records').insert({ 
-      beneficiary_id: selectedRecipient.id, 
-      status: 'confirmed', 
-      volume_ml: volume, 
-      fee_per_ml: FEE_PER_ML, 
-      bottle_deposit_amount: 0, 
-      deposit_paid: reqDeposit, 
-      clinical_abstract_verified: reqReferral, 
-      prescription_verified: true, 
-      cooler_with_ice_verified: true, 
-      dispensed_at: new Date().toISOString() 
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const now = new Date().toISOString()
+    const { data } = await supabase.from('dispensing_records').insert({
+      beneficiary_id: selectedRecipient.id,
+      status: 'confirmed',
+      volume_ml: volume,
+      fee_per_ml: FEE_PER_ML,
+      bottle_deposit_amount: 0,
+      deposit_paid: reqDeposit,
+      clinical_abstract_verified: reqReferral,
+      prescription_verified: true,
+      cooler_with_ice_verified: true,
+      dispensed_by: authUser?.id ?? null,
+      dispensed_at: now,
     }).select('id').single()
     
     if (data && selectedBottle) { 
