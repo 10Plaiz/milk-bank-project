@@ -80,7 +80,7 @@ The Philippine National Committee on Human Milk Banking (PNCHMB) is a steering c
 ### Case Site
 The Bangkal Milk Bank in Makati was established in 2013 as the first and only Local Government Unit (LGU)-run milk bank in the country. In 2014, by virtue of City Ordinance no. 2014-089, it was named Makati Human Milk Bank. Currently, it is run by four (4) staff members (1 head nurse and 3 midwives). Likewise, it offers various products and services such as: pasteurized milk, collection and dispensing of milk, respectively. Moreover, the milk bank has three (3) major programs offered to its constituents namely: Supsup Todo, Mom's Act, and Milky Way.
 
-According to Ms. Garcia, the head nurse, in their provision of such services like collecting of milk, registration of donors, recording of inventory, to name a few, they use logbooks to record data in a manual fashion. This is true in all their transactions. (Please refer to Appendices G-K for sample forms used by the facility).
+According to Ms. Garcia, the head nurse, in their provision of such services like collecting of milk, registration of donors, recording of inventory, to name a few, they use logbooks to record data in a manual fashion. This is true in all their transactions. Please refer to Appendices G (Screening form), H (Screening form), I (Monthly Collection report), J (Monthly Processing report), and K (Monthly Dispensing report) for sample forms used by the facility.
 
 ### Opportunities for Study
 Based on the claims of the staff of the milk bank and the observation, there are instances of errors in logbook entries such as delays in the entry of records and failure to update records. Likewise, they assert that they have difficulty in the backtracking of records of transactions, donors, and recipients. Thus, there is an opportunity for us to develop an information system that will computerize the said processes.
@@ -263,8 +263,8 @@ A human milk bank is a service established for the purpose of collecting, screen
 
 ### Review of Related Systems
 
-#### 1. TB International Production (Figure 12 & 13)
-*Manufactory Production Inventory Management Software.* An MS Access-driven production framework handling purchasing rules, vendor tracking, lead times, and materials analysis bills (BOM).
+#### 1. TB Inventory Management System (Figure 12 & 13)
+This is an inventory management system for TB International production, its functions are ordering management, company administration, and production reports.
 > **Visual Interpretation of Figure 12 & 13:** System dashboard screens showcasing relational layout structures monitoring raw storage items, active category groupings, procurement costs, and automated stock balances across transactional lines.
 
 #### 2. Blood Bank Monitoring System of the Philippines (Figure 14, 15 & 16)
@@ -296,45 +296,21 @@ A cloud solution combining barcode workflows and weighing scales to eliminate do
 
 ### Verification and System Testing Tables
 
-#### Table 5.2: Log-in Module Test Protocol Matrix
+#### Table 5.2: Log-in Test Results
 | Test Case | To Be Tested | Expected Results | Results | Remarks |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | Correct credentials (Doctor Account) | Login successful | PASSED | NONE |
-| 2 | Correct credentials (Nurse Account) | Login successful | PASSED | NONE |
-| 3 | Correct credentials (Midwife Account) | Login successful | PASSED | NONE |
-| 4 | Non-matching inputs (Admin Account) | Login unsuccessful | PASSED | NONE |
-| 5 | Non-matching inputs (Nurse Account) | Login unsuccessful | PASSED | NONE |
-| 6 | Non-matching inputs (Midwife Account) | Login unsuccessful | PASSED | NONE |
-| 7-9 | Valid User ID / Invalid Password | Login unsuccessful | PASSED | NONE |
-| 10-12| Invalid User ID / Valid Password | Login unsuccessful | PASSED | NONE |
-
-#### Table 5.5: Donor List Module Verification (Final Iteration Summary)
-| Test Case | Feature Under Evaluation | Targeted Success Metrics | Final Status |
-| :--- | :--- | :--- | :--- |
-| 1 | Primary Donor Data Grid Presentation | Records load completely inside view pane | PASSED |
-| 2 | Collection Tracking Number (CTN) Display | Renders accurately in table header row | PASSED |
-| 3 | Donor Tracking Number (DTN) Display | Renders accurately in table header row | PASSED |
-| 4 | First / Middle / Last Structural Name Rows | Text fields display string variables correctly | PASSED |
-| 5 | Registered Household Address Parameters | String addresses print correctly | PASSED |
-| 6 | Date of Birth Entry Verification | Displays standard calendar structures | PASSED |
-| 7 | Active Mobile Contact Numbers Block | Registers and renders 11-digit integers | PASSED |
-| 8 | Civil Status Identification State | Text values output correctly | PASSED |
-| 9 | Programmatic Automated DTN Generator Link | Trigger button calculates keys correctly | PASSED |
-| 10 | Maternal Eligibility Verification Status | Toggles binary states cleanly | PASSED |
-
-#### Table 5.8: Dispensing Module Verification (Third Iteration Summary)
-| Test Case | Feature Under Evaluation | Targeted Success Metrics | Final Status |
-| :--- | :--- | :--- | :--- |
-| 1 | Recipient Selector Control Field | Dropdown lists available names accurately | PASSED |
-| 2 | Active Identity Session Verification | Displays processing nurse/midwife identity | PASSED |
-| 3 | Fee Calculation Accounting System | Evaluates price accurately at 2 PHP per mL | PASSED |
-| 4 | Central Navigation Dashboard Hyperlink | Redirects safely to index page elements | PASSED |
-| 5 | System Asset Allocation Trigger Link | Routes users directly into target entry rows | PASSED |
-| 6 | Batch Collection Form Link | Redirects safely to batch entry forms | PASSED |
-| 7 | Pasteurization Control Module Link | Routes directly into operational parameters | PASSED |
-| 8 | Administrative Level Permissions Text | Elements scale correctly with credentials | PASSED |
-| 9 | Operational Module Branding Text | Headers render clearly inside browser viewpoint | PASSED |
-| 10 | Structural Document Loading Properties | Document components initialize properly | PASSED |
+| 1 | Test Login using both correct username and password of a doctor account | Login successful | | |
+| 2 | Test Login using both correct username and password of a nurse account | Login successful | | |
+| 3 | Test Login using both correct username and password of a midwife account | Login successful | NONE | |
+| 4 | Test Login if both username and password supplied are wrong in admin account | Login unsuccessful | PASSED | NONE |
+| 5 | Test Login if both username and password supplied are wrong in nurse account | Login unsuccessful | PASSED | NONE |
+| 6 | Test Login if both username and password supplied are wrong in midwife account | Login unsuccessful | PASSED | NONE |
+| 7 | Test Login if correct username but wrong password was supplied in admin account | Login unsuccessful | PASSED | NONE |
+| 8 | Test Login if correct username but wrong password was supplied in nurse account | Login unsuccessful | PASSED | NONE |
+| 9 | Test Login if correct username but wrong password was supplied in midwife account | Login unsuccessful | PASSED | NONE |
+| 10 | Test Login if correct password but wrong username was supplied in admin account | Login unsuccessful | PASSED | NONE |
+| 11 | Test Login if correct password but wrong username was supplied in nurse account | Login unsuccessful | PASSED | NONE |
+| 12 | Test Login if correct password but wrong username and password was supplied | Login unsuccessful | PASSED | NONE |
 
 ---
 
@@ -350,8 +326,7 @@ A cloud solution combining barcode workflows and weighing scales to eliminate do
 
 ---
 
-### Appendix F: Institutional Label Configurations
-```
+### Appendix F: Institutional Label Configurations```
 +------------------------------------------+  +------------------------------------------+
 |          MAKATI HUMAN MILK BANK          |  |          MAKATI HUMAN MILK BANK          |
 |     Unpasteurized Human Breast Milk      |  |          Pasteurized Human Milk          |
@@ -359,9 +334,10 @@ A cloud solution combining barcode workflows and weighing scales to eliminate do
 | DTN: ___________________________________ |  | Batch No: ______________________________ |
 | Volume: ________________________________ |  | Bottle No: _____________________________ |
 | AOB: ___________________________________ |  | Volume: ________________________________ |
-| Mode of Collection: [ ] FC [ ] PU        |  | Date of Expiration: ____________________ |
+| Mode of Collection:                      |  | Date of Expiration: ____________________ |
+|   [ ] FC  [ ] PU  [ ] PU-L  [ ] F       |  |                                          |
 | DoC: _______________ DoPU: _____________ |  |                                          |
-| Collected by: ______ DoEx: _____________ |  | [Barcode Area / Traceability Sign-off]   |
+| Collected by: ______ DoEx: _____________ |  |                                          |
 +------------------------------------------+  +------------------------------------------+
 ```
 > **Visual Interpretation of Appendix F:** High-contrast printed labeling sheets designed for container tracking. The raw collection label captures identity markers (`DTN`), collection modes, and expiration parameters, while the final pasteurized label tracks processed metrics (`Batch No`, `Bottle No`) and storage limits.
@@ -391,11 +367,14 @@ A cloud solution combining barcode workflows and weighing scales to eliminate do
   * Operational reserve margins and historical carryover balances (`MHMB Previous`, `OSMAK Previous`).
 
 ---
-
 ### References
-1. Christensson, P. (2013). Web Development Definition. TechTerms.
-2. Microsoft ASP.NET Framework Optimization Guidelines.
-3. SMS Technology Integration Criteria in Healthcare Frameworks.
-4. Department of Health, Philippines. (2014). *The Philippine Human Milk Banking Manual of Operations (MOP)*. National Center for Disease Prevention and Control.
-5. Rodriguez, F. (2014). *Got milk? Makati says yes*. Rappler Analytical Report.
-6. Usability 101: Core Deployment Matrix Rules. NNGroup Research.
+1. Christensson, P. (2013, February 5). Web Development Definition. Retrieved 2016, Mar 5, from Web Development Definition: http://techterms.com/definition/web_development
+2. http://www.asp.net/get-started/websites
+3. http://smallbusiness.chron.com/sms-technology-58872.html
+4. http://www.hkvstore.com/aspreportmaker/
+5. http://www.businessdbbuilder.com/mfinventorymngscreen.html
+6. MOP. The Philippine Human Milk Banking (Manual of Operation). Department of Health. 2014
+7. Rodriguez, Fritzie. Got milk? Makati says yes. Rappler report. http://www.rappler.com/move-ph/issues/hunger/59227-makati-human-milk-bank. 2014. Jakob Nielsen Usability 101: Introduction to Usability [online] Available: https://www.nngroup.com/articles/usability-101-introduction-to-usability
+8. e-Delphyn web based Human Milk Bank Management Solution http://www.hemasoft.com/humanMilkBank.html
+9. Sterifeed Human Milk Bank Tracking and Management Software http://www.sterifeed.com/product/human-milk-bank-tracking-managementsoftware/
+10. SafeBaby DMT. http://safebabybmt.paragondsi.com/safebaby-donor-milk-tracking/
