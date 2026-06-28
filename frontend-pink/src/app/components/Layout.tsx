@@ -1,18 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   LayoutDashboard, Users, Droplets, FlaskConical, Thermometer,
   Archive, HeartHandshake, ClipboardList, MessageSquare, Send,
-  FileBarChart2, ScrollText, ChevronLeft, ChevronRight,
-  UserCog, LogOut, Menu, Search, Bell, Settings
+  FileBarChart2, ScrollText, ChevronLeft, ChevronRight, ChevronDown,
+  UserCog, LogOut, Menu, Settings, Check
 } from 'lucide-react'
-import type { AppUser, Screen } from '../types'
+import type { ActiveProgram, AppUser, Screen } from '../types'
 
 interface NavItem {
   id: Screen | string
   label: string
   icon: React.ReactNode
   adminOnly?: boolean
+  /** If set, the item is only shown when activeProgram is in this list. */
+  programs?: ActiveProgram[]
 }
 
 interface NavGroup {
@@ -30,7 +32,13 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Donors',
     items: [
-      { id: 'donors', label: 'Donor Management', icon: <Users className="w-[18px] h-[18px]" /> },
+      {
+        id: 'donors',
+        label: 'Donor Management',
+        icon: <Users className="w-[18px] h-[18px]" />,
+        // Milky Way and Mom's Act donors are pre-screened externally
+        programs: ['All', 'Supsup Todo'],
+      },
     ],
   },
   {
@@ -46,7 +54,13 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Recipients',
     items: [
       { id: 'recipients', label: 'Recipients', icon: <HeartHandshake className="w-[18px] h-[18px]" /> },
-      { id: 'inquiry', label: 'Inquiries & Waiting', icon: <ClipboardList className="w-[18px] h-[18px]" /> },
+      {
+        id: 'inquiry',
+        label: 'Inquiries & Waiting',
+        icon: <ClipboardList className="w-[18px] h-[18px]" />,
+        // Mom's Act is a direct household pickup — no inquiry/waitlist flow
+        programs: ['All', 'Supsup Todo', 'Milky Way'],
+      },
     ],
   },
   {
@@ -81,20 +95,53 @@ const SCREEN_TITLES: Partial<Record<Screen, string>> = {
   audit: 'Audit Log',
 }
 
+const ALL_PROGRAMS: ActiveProgram[] = ['All', 'Supsup Todo', 'Milky Way', "Mom's Act"]
+
+const PROGRAM_ABBREV: Record<ActiveProgram, string> = {
+  'All': '··',
+  'Supsup Todo': 'ST',
+  'Milky Way': 'MW',
+  "Mom's Act": 'MA',
+}
+
 interface LayoutProps {
   user: AppUser
   currentScreen: Screen
+  activeProgram: ActiveProgram
   onNavigate: (screen: Screen) => void
+  onProgramChange: (program: ActiveProgram) => void
   onLogout: () => void
   children: React.ReactNode
 }
 
-export function Layout({ user, currentScreen, onNavigate, onLogout, children }: LayoutProps) {
+export function Layout({ user, currentScreen, activeProgram, onNavigate, onProgramChange, onLogout, children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [programOpen, setProgramOpen] = useState(false)
+  const programRef = useRef<HTMLDivElement>(null)
   const isAdmin = user.role === 'Administrator'
+
+  useEffect(() => {
+    if (!programOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (programRef.current && !programRef.current.contains(e.target as Node)) {
+        setProgramOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [programOpen])
+
+  function handleProgramChange(program: ActiveProgram) {
+    onProgramChange(program)
+    setProgramOpen(false)
+    // Auto-redirect to dashboard if the current screen is hidden in the new program
+    const screenItem = NAV_GROUPS.flatMap(g => g.items).find(i => i.id === currentScreen)
+    if (screenItem?.programs && !screenItem.programs.includes(program)) {
+      onNavigate('dashboard')
+    }
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full" style={{ background: '#322e2d' }}>
@@ -127,13 +174,107 @@ export function Layout({ user, currentScreen, onNavigate, onLogout, children }: 
         )}
       </div>
 
+      {/* Program Switcher */}
+      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {collapsed ? (
+          // Compact collapsed indicator — click to expand + open switcher
+          <button
+            onClick={() => { setCollapsed(false); setProgramOpen(true) }}
+            title={`Program: ${activeProgram === 'All' ? 'All Programs' : activeProgram} — click to change`}
+            className="w-full flex items-center justify-center py-3 transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          >
+            <div
+              className="w-6 h-6 rounded-md flex items-center justify-center text-[9px]"
+              style={{
+                background: activeProgram === 'All' ? 'rgba(255,255,255,0.06)' : 'rgba(238,164,187,0.18)',
+                color: activeProgram === 'All' ? '#5a5655' : '#eea4bb',
+                fontFamily: 'var(--font-family-mono)',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+              }}
+            >
+              {PROGRAM_ABBREV[activeProgram]}
+            </div>
+          </button>
+        ) : (
+          <div className="px-3 py-2.5" ref={programRef}>
+            {/* Trigger button */}
+            <button
+              onClick={() => setProgramOpen(o => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-[rgba(255,255,255,0.05)]"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: activeProgram === 'All' ? '#5a5655' : '#eea4bb' }}
+                />
+                <span
+                  className="text-[13px] truncate"
+                  style={{ color: '#c4bfbc', fontWeight: 500 }}
+                >
+                  {activeProgram === 'All' ? 'All Programs' : activeProgram}
+                </span>
+              </div>
+              <motion.div
+                animate={{ rotate: programOpen ? 180 : 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              >
+                <ChevronDown className="w-3.5 h-3.5 shrink-0" style={{ color: '#5a5655' }} />
+              </motion.div>
+            </button>
+
+            {/* Options list */}
+            <AnimatePresence>
+              {programOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div className="pt-1 space-y-0.5">
+                    {ALL_PROGRAMS.map(program => {
+                      const isSelected = activeProgram === program
+                      return (
+                        <button
+                          key={program}
+                          onClick={() => handleProgramChange(program)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors hover:bg-[rgba(255,255,255,0.05)]"
+                          style={{ color: isSelected ? '#eea4bb' : '#7a7573' }}
+                        >
+                          <div
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: isSelected ? '#eea4bb' : '#3d3836' }}
+                          />
+                          <span className="flex-1 text-left" style={{ fontWeight: isSelected ? 600 : 400 }}>
+                            {program === 'All' ? 'All Programs' : program}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
       {/* Nav */}
       <nav className="app-scrollbar app-scrollbar-dark flex-1 overflow-y-auto py-4 px-3 space-y-5">
         {NAV_GROUPS.map((group) => {
-          const visibleItems = group.items.filter((item) => !item.adminOnly || isAdmin)
-          const grayedItems = group.items.filter((item) => item.adminOnly && !isAdmin)
-          const allItems = isAdmin ? visibleItems : [...visibleItems, ...grayedItems]
-          if (allItems.length === 0) return null
+          // Hide items that don't belong to the active program
+          const filteredItems = group.items.filter(item => {
+            const programOk = !item.programs || item.programs.includes(activeProgram)
+            // Admin-only items for non-admins: always show (grayed), not program-filtered
+            if (item.adminOnly) return true
+            return programOk
+          })
+
+          if (filteredItems.length === 0) return null
 
           return (
             <div key={group.label}>
@@ -146,7 +287,7 @@ export function Layout({ user, currentScreen, onNavigate, onLogout, children }: 
                 </div>
               )}
               <div className="space-y-0.5">
-                {group.items.map((item) => {
+                {filteredItems.map((item) => {
                   const isActive = currentScreen === item.id
                   const isGrayed = item.adminOnly && !isAdmin
 
@@ -200,6 +341,7 @@ export function Layout({ user, currentScreen, onNavigate, onLogout, children }: 
           )
         })}
       </nav>
+
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -275,15 +417,19 @@ export function Layout({ user, currentScreen, onNavigate, onLogout, children }: 
               >
                 {SCREEN_TITLES[currentScreen] ?? 'Dashboard'}
               </div>
-              <div className="text-[11px] text-[#636260] mt-0.5" style={{ fontFamily: 'var(--font-family-mono)' }}>
+              <div className="text-[11px] text-[#636260] mt-0.5 flex items-center gap-1.5" style={{ fontFamily: 'var(--font-family-mono)' }}>
                 Makati Human Milk Bank
+                {activeProgram !== 'All' && (
+                  <>
+                    <span style={{ color: '#c4bfbc' }}>·</span>
+                    <span style={{ color: '#eea4bb' }}>{activeProgram}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-
-
             <div className="relative">
               <button
                 onClick={() => setAccountOpen((current) => !current)}

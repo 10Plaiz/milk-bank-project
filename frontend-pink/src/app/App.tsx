@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { AppUser, Screen, CreateAccessAccountInput } from './types'
+import type { ActiveProgram, AppUser, Screen, CreateAccessAccountInput } from './types'
+import { ProgramContext } from '../lib/programContext'
 import { Layout } from './components/Layout'
 import { LoginScreen } from './components/screens/LoginScreen'
 import { AdminAccountsScreen } from './components/screens/AdminAccountsScreen'
@@ -65,6 +66,7 @@ function ScreenContent({
 export default function App() {
   const [user, setUser] = useState<AppUser | null>(null)
   const [screen, setScreen] = useState<Screen>('dashboard')
+  const [activeProgram, setActiveProgram] = useState<ActiveProgram>('All')
   const [statusNotice, setStatusNotice] = useState<string | undefined>(undefined)
   const [statusError, setStatusError] = useState<string | undefined>(undefined)
   const [isInitializing, setIsInitializing] = useState(true)
@@ -199,23 +201,27 @@ export default function App() {
   }
 
   return (
-    <Layout
-      user={user}
-      currentScreen={screen}
-      onNavigate={(s) => setScreen(s)}
-      onLogout={handleLogout}
-    >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={screen}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-        >
-          <ScreenContent screen={screen} user={user} onNavigate={setScreen} />
-        </motion.div>
-      </AnimatePresence>
-    </Layout>
+    <ProgramContext.Provider value={activeProgram}>
+      <Layout
+        user={user}
+        currentScreen={screen}
+        activeProgram={activeProgram}
+        onNavigate={(s) => setScreen(s)}
+        onProgramChange={setActiveProgram}
+        onLogout={handleLogout}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={screen}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+          >
+            <ScreenContent screen={screen} user={user} onNavigate={setScreen} />
+          </motion.div>
+        </AnimatePresence>
+      </Layout>
+    </ProgramContext.Provider>
   )
 }

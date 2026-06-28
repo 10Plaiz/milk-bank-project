@@ -6,6 +6,8 @@ export type DatabaseRole = 'admin' | 'staff'
 
 export type ProgramType = 'Supsup Todo' | "Mom's Act" | 'Milky Way'
 
+export type ActiveProgram = ProgramType | 'All'
+
 export type ScreeningStatus = 'Pending' | 'Passed' | 'Failed'
 
 export type BatchStatus =
