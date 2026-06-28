@@ -4,13 +4,19 @@
 * register button is not indicating visually if it selectable.
 * SUGGESTED: to put common occupations as a dropdown option
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d78cf494eef083a3de420f4f8fb440ef558650b0
 2. Donor Management/ Export_button
 
 * working button after saving personal info
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> d78cf494eef083a3de420f4f8fb440ef558650b0
 3. Donor Management/ +_Add Donor/ Health_Screening
 
 * not saving information if health screening is the only filled
