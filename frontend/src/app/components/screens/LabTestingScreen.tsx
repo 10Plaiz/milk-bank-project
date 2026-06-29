@@ -287,7 +287,8 @@ export function LabTestingScreen() {
                         type="button"
                         onClick={() => setTestResult('passed')}
                         aria-pressed={testResult === 'passed'}
-                        className={`flex-1 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all border ${testResult === 'passed' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}
+                        className={`flex-1 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all border ${testResult === 'passed' ? 'text-white shadow-md' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}
+                        style={testResult === 'passed' ? { background: '#4a7c66', borderColor: '#4a7c66', boxShadow: '0 4px 12px #4a7c6633' } : {}}
                       >
                         PASS
                       </button>
@@ -295,7 +296,8 @@ export function LabTestingScreen() {
                         type="button"
                         onClick={() => setTestResult('failed')}
                         aria-pressed={testResult === 'failed'}
-                        className={`flex-1 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all border ${testResult === 'failed' ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/20' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}
+                        className={`flex-1 py-3 rounded-xl text-sm font-semibold tracking-wide transition-all border ${testResult === 'failed' ? 'text-white shadow-md' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}
+                        style={testResult === 'failed' ? { background: '#b8526f', borderColor: '#b8526f', boxShadow: '0 4px 12px #b8526f33' } : {}}
                       >
                         FAIL
                       </button>

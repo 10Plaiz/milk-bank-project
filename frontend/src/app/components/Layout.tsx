@@ -147,7 +147,7 @@ export function Layout({ user, currentScreen, activeProgram, onNavigate, onProgr
     <div className="flex flex-col h-full" style={{ background: '#322e2d' }}>
       {/* Brand */}
       <div
-        className="flex items-center gap-3 px-5 py-5"
+        className={`flex items-center gap-3 py-5 ${collapsed ? 'justify-center' : 'px-5'}`}
         style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
         <div
@@ -304,8 +304,9 @@ export function Layout({ user, currentScreen, activeProgram, onNavigate, onProgr
                       whileHover={!isGrayed && !isActive ? { x: 2 } : {}}
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                       className={`
-                        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
+                        w-full flex items-center py-2.5 rounded-xl text-sm
                         transition-colors relative group
+                        ${collapsed ? 'justify-center' : 'gap-3 px-3'}
                         ${isActive
                           ? 'text-[#322e2d]'
                           : isGrayed

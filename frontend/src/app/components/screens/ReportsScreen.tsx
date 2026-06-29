@@ -6,7 +6,7 @@ import { exportCsv, exportExcel, toProgramLabel, toTitle, type ExportRow } from 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 type Collection = { id: string; program: string; volume_ml: number; collected_at: string }
-type Batch = { id: string; status: string; program: string; total_volume_ml: number }
+type Batch = { id: string; status: string; program: string; total_volume_ml: number; discarded_reason: string | null }
 type Donor = { id: string }
 type Dispense = { id: string; volume_ml: number; total_fee: number; dispensed_at: string | null; status: string; beneficiary_id: string }
 
@@ -33,7 +33,7 @@ export function ReportsScreen() {
   useEffect(() => {
     void Promise.all([
       supabase.from('collections').select('id,program,volume_ml,collected_at'),
-      supabase.from('batches').select('id,status,program,total_volume_ml'),
+      supabase.from('batches').select('id,status,program,total_volume_ml,discarded_reason'),
       supabase.from('donors').select('id'),
       supabase.from('dispensing_records').select('id,volume_ml,total_fee,dispensed_at,status,beneficiary_id').eq('status', 'confirmed')
     ]).then(([c,b,d,ds]) => {
@@ -126,6 +126,29 @@ export function ReportsScreen() {
     netToPast: acc.netToPast + row.netToPast,
     carryover: acc.carryover + row.carryover
   }), { rawVolume: 0, qaFailure: 0, netToPast: 0, carryover: 0 })
+
+  const discardBreakdown = batches
+    .filter(b => b.status === 'discarded')
+    .reduce(
+      (acc, b) => {
+        const vol = Number(b.total_volume_ml)
+        if (b.discarded_reason === 'failed pre-pasteurization lab test') {
+          acc.pre.count++; acc.pre.volume += vol
+        } else if (b.discarded_reason === 'failed post-pasteurization lab test') {
+          acc.post.count++; acc.post.volume += vol
+        } else {
+          acc.manual.count++; acc.manual.volume += vol
+        }
+        return acc
+      },
+      {
+        pre:    { label: 'Pre-test Failures',  count: 0, volume: 0 },
+        post:   { label: 'Post-test Failures', count: 0, volume: 0 },
+        manual: { label: 'Manual Discards',    count: 0, volume: 0 },
+      },
+    )
+  const discardBreakdownRows = Object.values(discardBreakdown)
+  const totalDiscardedVol = discardBreakdownRows.reduce((s, r) => s + r.volume, 0)
 
   const reportRows: ExportRow[] = ledgerRows.map(r => ({
     Program: r.program,
@@ -270,6 +293,53 @@ export function ReportsScreen() {
           </div>
         </div>
       </div>
+
+      {totalDiscardedVol > 0 && (
+        <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-zinc-100">
+            <h3 className="font-semibold text-zinc-900">Discard Breakdown</h3>
+            <p className="text-sm text-zinc-500 mt-0.5">Why batches were discarded</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-zinc-50">
+                <tr>
+                  {['Category', 'Batches', 'Volume (mL)', '% of Discarded'].map(h => (
+                    <th key={h} className="px-6 py-4 text-left text-xs font-mono font-semibold text-zinc-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 bg-white">
+                {discardBreakdownRows.filter(r => r.count > 0).map(row => {
+                  const pct = totalDiscardedVol > 0
+                    ? ((row.volume / totalDiscardedVol) * 100).toFixed(1)
+                    : '0.0'
+                  return (
+                    <tr key={row.label} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-zinc-700">{row.label}</td>
+                      <td className="px-6 py-4 text-sm font-mono tabular-nums text-zinc-900">{row.count}</td>
+                      <td className="px-6 py-4 text-sm font-mono tabular-nums text-zinc-900">
+                        {new Intl.NumberFormat('en-PH').format(row.volume)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono tabular-nums text-zinc-500">{pct}%</td>
+                    </tr>
+                  )
+                })}
+                <tr style={{ backgroundColor: '#FADDE1' }}>
+                  <td className="px-6 py-4 text-sm font-bold" style={{ color: '#FF5D8F' }}>Total</td>
+                  <td className="px-6 py-4 text-sm font-mono font-bold" style={{ color: '#FF5D8F' }}>
+                    {discardBreakdownRows.reduce((s, r) => s + r.count, 0)}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-mono font-bold" style={{ color: '#FF5D8F' }}>
+                    {new Intl.NumberFormat('en-PH').format(totalDiscardedVol)}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-mono font-bold" style={{ color: '#FF5D8F' }}>100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

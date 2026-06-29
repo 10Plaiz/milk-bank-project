@@ -8,13 +8,12 @@ import { useProgramFilter } from '../../../lib/programContext'
 import { usePagination } from '../../hooks/usePagination'
 import { Pagination } from '../shared/Pagination'
 
-type Batch = { id: string; batch_number: string | null; status: string; program: string; total_volume_ml: number; created_at: string }
+type Batch = { id: string; batch_number: string | null; status: string; program: string; total_volume_ml: number; created_at: string; discarded_reason: string | null }
 type SummaryItem = { status: string; total_volume_ml: number }
 
 const STATUS_ORDER = [
   'raw', 'pre_testing', 'pre_test_passed', 'pasteurized',
   'post_testing', 'ready', 'dispensed', 'discarded',
-  'pre_test_failed', 'post_test_failed',
 ]
 
 export function InventoryScreen() {
@@ -51,7 +50,7 @@ export function InventoryScreen() {
     const dbProgram = activeProgramToDb(activeProgram)
     let q = supabase
       .from('batches')
-      .select('id,batch_number,status,program,total_volume_ml,created_at', { count: 'exact' })
+      .select('id,batch_number,status,program,total_volume_ml,created_at,discarded_reason', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to)
     if (dbProgram) q = q.eq('program', dbProgram)
@@ -130,7 +129,12 @@ export function InventoryScreen() {
                   <td className="px-6 py-4 text-sm font-medium font-mono" style={{ color: '#eea4bb' }}>{row.batch_number ?? 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-zinc-700">{toProgramLabel(row.program)}</td>
                   <td className="px-6 py-4 text-sm font-mono tabular-nums text-zinc-900">{Number(row.total_volume_ml).toLocaleString()}</td>
-                  <td className="px-6 py-4"><StatusBadge value={row.status.toUpperCase()} /></td>
+                  <td className="px-6 py-4">
+                    <StatusBadge
+                      value={row.status.toUpperCase()}
+                      reason={row.status === 'discarded' ? row.discarded_reason : undefined}
+                    />
+                  </td>
                   <td className="px-6 py-4 text-sm text-zinc-500 font-mono">{formatDate(row.created_at)}</td>
                 </tr>
               ))}

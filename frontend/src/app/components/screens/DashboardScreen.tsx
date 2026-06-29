@@ -21,26 +21,39 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      try {
-        const [b, d, i, r, w] = await Promise.all([
-          supabase.from('batches').select('id,status,program,total_volume_ml'),
-          supabase.from('donors').select('id', { count: 'exact', head: true }),
-          supabase.from('inquiries').select('id,status,beneficiaries(guardian_name,baby_name)').neq('status','cancelled'),
-          supabase.from('collection_unit_report_base').select('*'),
-          supabase.from('waitlist_fifo').select('*')
-        ])
-        
-        setBatches((b.data ?? []) as Batch[])
-        setDonorCount(d.count ?? 0)
-        setInquiries((i.data ?? []) as Inquiry[])
-        setReports((r.data ?? []) as ReportBase[])
-        setWaitlist((w.data ?? []) as Waitlist[])
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
+      const [b, d, i, r, w] = await Promise.allSettled([
+        supabase.from('batches').select('id,status,program,total_volume_ml'),
+        supabase.from('donors').select('id', { count: 'exact', head: true }),
+        supabase.from('inquiries').select('id,status,beneficiaries(guardian_name,baby_name)').neq('status', 'cancelled'),
+        supabase.from('collection_unit_report_base').select('*'),
+        supabase.from('waitlist_fifo').select('*'),
+      ])
+
+      if (b.status === 'fulfilled') {
+        if (b.value.error) console.error('batches:', b.value.error)
+        else setBatches((b.value.data ?? []) as Batch[])
+      }
+      if (d.status === 'fulfilled') {
+        if (!d.value.error) setDonorCount(d.value.count ?? 0)
+      }
+      if (i.status === 'fulfilled') {
+        if (!i.value.error) setInquiries((i.value.data ?? []) as Inquiry[])
+      }
+      if (r.status === 'fulfilled') {
+        if (r.value.error) console.warn('collection_unit_report_base missing — run views SQL in Supabase')
+        else setReports((r.value.data ?? []) as ReportBase[])
+      }
+      if (w.status === 'fulfilled') {
+        if (w.value.error) console.warn('waitlist_fifo missing — run views SQL in Supabase')
+        else setWaitlist((w.value.data ?? []) as Waitlist[])
       }
     }
     void fetchDashboard()
   }, [])
+
+  const mlReady = batches
+    .filter(b => b.status === 'ready')
+    .reduce((s, b) => s + Number(b.total_volume_ml), 0)
 
   const pipelineStages = [
     { id: 'raw', label: 'Raw', hex: '#FADDE1' },
@@ -102,22 +115,42 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
       
       {/* Milk Lifecycle Pipeline */}
       <div className="bg-[#18181b] rounded-[32px] p-8 overflow-hidden relative shadow-xl border border-zinc-800">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-start mb-6">
           <div>
             <h3 className="text-white font-semibold text-xl tracking-tight">Milk Lifecycle Pipeline</h3>
             <p className="text-zinc-500 text-sm mt-1">Real-time batch status across all stages</p>
+            <div className="flex items-center gap-5 mt-4 flex-wrap">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold font-mono tabular-nums text-white">{donorCount}</span>
+                <span className="text-zinc-500 text-[11px] font-mono uppercase tracking-wider">Donors</span>
+              </div>
+              <div className="w-px h-4 bg-zinc-700 shrink-0" />
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold font-mono tabular-nums text-white">
+                  {new Intl.NumberFormat('en-PH').format(mlReady)}
+                </span>
+                <span className="text-zinc-500 text-[11px] font-mono uppercase tracking-wider">mL Ready</span>
+              </div>
+              <div className="w-px h-4 bg-zinc-700 shrink-0" />
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold font-mono tabular-nums text-white">{waitlist.length}</span>
+                <span className="text-zinc-500 text-[11px] font-mono uppercase tracking-wider">On Waiting List</span>
+              </div>
+            </div>
           </div>
-          <button onClick={() => onNavigate('inventory')} className="text-pink-300 hover:text-pink-200 text-sm font-medium flex items-center gap-1 transition-colors">
+          <button onClick={() => onNavigate('inventory')} className="text-pink-300 hover:text-pink-200 text-sm font-medium flex items-center gap-1 transition-colors shrink-0">
             Full inventory <ArrowRight className="w-4 h-4" />
           </button>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-4 hide-scrollbar snap-x">
           {pipelineData.map((stage, idx) => (
-            <motion.div 
-              key={stage.id} 
+            <motion.div
+              key={stage.id}
               className="flex-shrink-0 bg-[#27272a] rounded-3xl p-5 w-40 snap-start border border-zinc-800 relative z-10"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 26, delay: idx * 0.06 }}
+              whileHover={{ scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 30 } }}
             >
               <div className="flex items-center gap-2 mb-4">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.hex }} />
