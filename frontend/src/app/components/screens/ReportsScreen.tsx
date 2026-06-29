@@ -97,7 +97,7 @@ export function ReportsScreen() {
     .map(([name, value]) => ({ name, value }))
 
   // Ledger Logic
-  const programs = ['in_house', 'moms_act', 'milky_way', 'supsup_todo']
+  const programs = ['supsup_todo', 'milky_way', 'moms_act']
   const ledgerRows = programs.map(prog => {
     const progCollections = collections.filter(c => c.program === prog)
     const progBatches = batches.filter(b => b.program === prog)

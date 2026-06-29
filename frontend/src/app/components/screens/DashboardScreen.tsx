@@ -9,14 +9,14 @@ import { motion } from 'motion/react'
 
 type Batch = { id: string; status: string; program: string; total_volume_ml: number }
 type Inquiry = { id: string; status: string; beneficiaries?: { guardian_name: string; baby_name: string } | null }
-type ReportBase = { report_month: string; program: string; raw_collected_ml: number }
+type CollectionReport = { collected_at: string; program: string; volume_ml: number }
 type Waitlist = { inquiry_id: string; guardian_name: string; baby_name: string; requested_at: string }
 
 export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) => void }) {
   const [batches, setBatches] = useState<Batch[]>([])
   const [donorCount, setDonorCount] = useState(0)
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
-  const [reports, setReports] = useState<ReportBase[]>([])
+  const [collectionReports, setCollectionReports] = useState<CollectionReport[]>([])
   const [waitlist, setWaitlist] = useState<Waitlist[]>([])
 
   useEffect(() => {
@@ -25,8 +25,12 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
         supabase.from('batches').select('id,status,program,total_volume_ml'),
         supabase.from('donors').select('id', { count: 'exact', head: true }),
         supabase.from('inquiries').select('id,status,beneficiaries(guardian_name,baby_name)').neq('status', 'cancelled'),
-        supabase.from('collection_unit_report_base').select('*'),
-        supabase.from('waitlist_fifo').select('*'),
+        supabase.from('collections').select('collected_at,program,volume_ml'),
+        supabase.from('inquiries')
+          .select('id,requested_at,beneficiaries!inner(guardian_name,baby_name)')
+          .eq('status', 'waiting')
+          .order('requested_at', { ascending: true })
+          .limit(5),
       ])
 
       if (b.status === 'fulfilled') {
@@ -40,12 +44,22 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
         if (!i.value.error) setInquiries((i.value.data ?? []) as Inquiry[])
       }
       if (r.status === 'fulfilled') {
-        if (r.value.error) console.warn('collection_unit_report_base missing — run views SQL in Supabase')
-        else setReports((r.value.data ?? []) as ReportBase[])
+        if (!r.value.error) setCollectionReports((r.value.data ?? []) as CollectionReport[])
       }
       if (w.status === 'fulfilled') {
-        if (w.value.error) console.warn('waitlist_fifo missing — run views SQL in Supabase')
-        else setWaitlist((w.value.data ?? []) as Waitlist[])
+        if (!w.value.error) {
+          const wData = ((w.value.data ?? []) as Array<{
+            id: string
+            requested_at: string
+            beneficiaries: { guardian_name: string; baby_name: string } | null
+          }>).map(item => ({
+            inquiry_id: item.id,
+            guardian_name: item.beneficiaries?.guardian_name ?? '',
+            baby_name: item.beneficiaries?.baby_name ?? '',
+            requested_at: item.requested_at,
+          }))
+          setWaitlist(wData)
+        }
       }
     }
     void fetchDashboard()
@@ -66,6 +80,16 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
     { id: 'discarded', label: 'Discarded', hex: '#F08080' },
   ]
 
+  const STAGE_NAV: Record<string, string> = {
+    raw:             'collection',
+    pre_testing:     'lab',
+    pre_test_passed: 'pasteurization',
+    pasteurized:     'pasteurization',
+    post_testing:    'lab',
+    ready:           'dispensing',
+    dispensed:       'dispensing',
+  }
+
   const pipelineData = pipelineStages.map(stage => {
     const stageBatches = batches.filter(b => b.status === stage.id || (b.status || '').toLowerCase() === stage.id)
     const volume = stageBatches.reduce((acc, b) => acc + Number(b.total_volume_ml), 0)
@@ -85,26 +109,26 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
 
   type MonthEntry = Record<string, string | number>
   const monthlyRaw = new Map<string, { entry: MonthEntry; sortVal: number }>()
-  reports.forEach(r => {
-    const key = r.report_month?.slice(0, 7) ?? 'unknown'
+  collectionReports.forEach(c => {
+    const key = c.collected_at?.slice(0, 7) ?? 'unknown'
     if (!monthlyRaw.has(key)) {
-      const d = r.report_month ? new Date(r.report_month + 'T00:00:00') : new Date(0)
+      const d = c.collected_at ? new Date(c.collected_at.slice(0, 7) + '-01T00:00:00') : new Date(0)
       monthlyRaw.set(key, {
         entry: { name: new Intl.DateTimeFormat('en-PH', { month: 'short' }).format(d) },
         sortVal: d.getTime(),
       })
     }
     const item = monthlyRaw.get(key)!
-    item.entry[r.program] = (Number(item.entry[r.program] ?? 0)) + Number(r.raw_collected_ml ?? 0)
+    item.entry[c.program] = (Number(item.entry[c.program] ?? 0)) + Number(c.volume_ml ?? 0)
   })
   const monthlyChartData = Array.from(monthlyRaw.values())
     .sort((a, b) => a.sortVal - b.sortVal)
     .map(item => item.entry)
-  const activePrograms = Array.from(new Set(reports.map(r => r.program)))
+  const activePrograms = Array.from(new Set(collectionReports.map(c => c.program)))
 
   const programDataMap = new Map<string, number>()
-  reports.forEach(r => {
-    programDataMap.set(r.program, (programDataMap.get(r.program) || 0) + Number(r.raw_collected_ml || 0))
+  collectionReports.forEach(c => {
+    programDataMap.set(c.program, (programDataMap.get(c.program) || 0) + Number(c.volume_ml || 0))
   })
   const programChartData = Array.from(programDataMap.entries()).map(([name, value]) => ({ name: toProgramLabel(name) || name, value }))
   const programColors = ['#f472b6', '#3f3f46', '#a1a1aa', '#fb7185']
@@ -143,26 +167,36 @@ export function DashboardScreen({ onNavigate }: { onNavigate: (screen: string) =
           </button>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-4 hide-scrollbar snap-x">
-          {pipelineData.map((stage, idx) => (
-            <motion.div
-              key={stage.id}
-              className="flex-shrink-0 bg-[#27272a] rounded-3xl p-5 w-40 snap-start border border-zinc-800 relative z-10"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 26, delay: idx * 0.06 }}
-              whileHover={{ scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 30 } }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.hex }} />
-                <span className="text-sm font-medium tracking-wide" style={{ color: stage.hex }}>{stage.label}</span>
-              </div>
-              <div className="text-4xl font-semibold text-white tracking-tight font-mono">{stage.volume}</div>
-              <div className="text-zinc-500 text-xs mt-1 font-mono uppercase tracking-wider">mL &middot; {stage.count}b</div>
-              {idx !== pipelineData.length - 1 && (
-                <div className="absolute top-1/2 -right-4 w-4 h-px bg-zinc-700 -z-10" />
-              )}
-            </motion.div>
-          ))}
+          {pipelineData.map((stage, idx) => {
+            const navTarget = STAGE_NAV[stage.id]
+            return (
+              <motion.div
+                key={stage.id}
+                role={navTarget ? 'button' : undefined}
+                tabIndex={navTarget ? 0 : undefined}
+                aria-label={navTarget ? `Go to ${stage.label} screen` : undefined}
+                onClick={navTarget ? () => onNavigate(navTarget) : undefined}
+                onKeyDown={navTarget ? (e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate(navTarget) } : undefined}
+                className={`flex-shrink-0 bg-[#27272a] rounded-3xl p-5 w-40 snap-start border border-zinc-800 relative z-10 text-left${navTarget ? ' cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2' : ''}`}
+                style={navTarget ? { outlineColor: stage.hex } : {}}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 26, delay: idx * 0.06 }}
+                whileHover={{ scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 30 } }}
+                whileTap={navTarget ? { scale: 0.97 } : undefined}
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.hex }} />
+                  <span className="text-sm font-medium tracking-wide" style={{ color: stage.hex }}>{stage.label}</span>
+                </div>
+                <div className="text-4xl font-semibold text-white tracking-tight font-mono">{stage.volume}</div>
+                <div className="text-zinc-500 text-xs mt-1 font-mono uppercase tracking-wider">mL &middot; {stage.count}b</div>
+                {idx !== pipelineData.length - 1 && (
+                  <div className="absolute top-1/2 -right-4 w-4 h-px bg-zinc-700 -z-10" />
+                )}
+              </motion.div>
+            )
+          })}
         </div>
       </div>
 

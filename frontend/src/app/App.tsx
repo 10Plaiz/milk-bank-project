@@ -33,7 +33,7 @@ function ScreenContent({
     case 'dashboard':
       return <DashboardScreen onNavigate={onNavigate} />
     case 'donors':
-      return <DonorManagementScreen />
+      return <DonorManagementScreen user={user} />
     case 'collection':
       return <MilkCollectionScreen />
     case 'lab':

@@ -59,13 +59,34 @@ export function MilkCollectionScreen() {
 
   async function load(): Promise<void> {
     const dbProgram = activeProgramToDb(activeProgram)
+
+    // Search by donor name/DTN requires a two-step lookup since PostgREST
+    // can't OR-filter across a left-join boundary reliably.
+    let searchDonorIds: string[] = []
+    if (debouncedSearch) {
+      const { data: matched } = await supabase
+        .from('donors')
+        .select('id')
+        .or(`full_name.ilike.%${debouncedSearch}%,dtn.ilike.%${debouncedSearch}%`)
+        .limit(100)
+      searchDonorIds = (matched ?? []).map(d => d.id)
+    }
+
     let collectionsQuery = supabase
       .from('collections')
       .select('id,ctn,program,volume_ml,collection_mode,collected_at,age_of_baby_days,donors(id,dtn,full_name,primary_program)', { count: 'exact' })
       .order('collected_at', { ascending: false })
       .range(from, to)
     if (dbProgram) collectionsQuery = collectionsQuery.eq('program', dbProgram)
-    if (debouncedSearch) collectionsQuery = collectionsQuery.ilike('ctn', `%${debouncedSearch}%`)
+    if (debouncedSearch) {
+      if (searchDonorIds.length > 0) {
+        collectionsQuery = collectionsQuery.or(
+          `ctn.ilike.%${debouncedSearch}%,donor_id.in.(${searchDonorIds.join(',')})`
+        )
+      } else {
+        collectionsQuery = collectionsQuery.ilike('ctn', `%${debouncedSearch}%`)
+      }
+    }
 
     let donorsQuery = supabase.from('donors').select('id,dtn,full_name,primary_program').order('full_name')
     if (dbProgram) donorsQuery = donorsQuery.eq('primary_program', dbProgram)
@@ -127,6 +148,8 @@ export function MilkCollectionScreen() {
       }
     }
 
+    const { data: { session } } = await supabase.auth.getSession()
+
     const { data: collection } = await supabase.from('collections').insert({
       donor_id: donorId,
       program,
@@ -135,6 +158,7 @@ export function MilkCollectionScreen() {
       collected_at: String(form.get('collected_at')) || new Date().toISOString(),
       age_of_baby_days: ageOfBabyDays,
       cold_chain_verified: true,
+      collected_by: session?.user?.id ?? null,
     }).select('id').single()
 
     const { data: batch } = await supabase.from('batches').insert({
@@ -354,12 +378,8 @@ export function MilkCollectionScreen() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label htmlFor="col-by" className="text-sm font-medium text-zinc-700">Collected By</label>
-                    <input id="col-by" name="collected_by" placeholder="e.g., Maria Santos, R.N." maxLength={100} className="w-full rounded-xl bg-zinc-50/50 border border-zinc-200 px-4 py-2.5 text-sm outline-none focus-visible:border-pink-300 focus-visible:ring-2 focus-visible:ring-pink-100 transition-all placeholder:text-zinc-400" />
-                  </div>
 
-                </div>
+</div>
 
                 <div className="px-8 py-5 border-t border-zinc-100 bg-white flex justify-end gap-3 items-center">
                   <button type="button" onClick={() => setOpen(false)} className="px-5 py-2.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">

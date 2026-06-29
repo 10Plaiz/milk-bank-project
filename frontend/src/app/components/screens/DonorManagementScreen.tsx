@@ -8,6 +8,7 @@ import { useProgramFilter } from '../../../lib/programContext'
 import { usePagination } from '../../hooks/usePagination'
 import { Pagination } from '../shared/Pagination'
 import { motion, AnimatePresence } from 'motion/react'
+import type { AppUser } from '../../types'
 
 type DonorRow = {
   id: string
@@ -37,7 +38,8 @@ const CHECKLIST_ITEMS = [
   { id: 'drugs', label: 'Illegal drug use' }
 ]
 
-export function DonorManagementScreen() {
+export function DonorManagementScreen({ user }: { user: AppUser }) {
+  const isAdmin = user.role === 'Administrator'
   const [rows, setRows] = useState<DonorRow[]>([])
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
@@ -223,9 +225,11 @@ export function DonorManagementScreen() {
                       <Pencil className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
-                      onClick={() => setDeleteTarget(row)}
-                      aria-label={`Delete ${row.full_name}`}
-                      className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      onClick={isAdmin ? () => setDeleteTarget(row) : undefined}
+                      disabled={!isAdmin}
+                      aria-label={isAdmin ? `Delete ${row.full_name}` : 'Delete — admin only'}
+                      title={!isAdmin ? 'Only administrators can delete donors' : undefined}
+                      className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'text-zinc-400 hover:text-red-500 hover:bg-red-50' : 'text-zinc-200 cursor-not-allowed'}`}
                     >
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>

@@ -29,6 +29,7 @@ export function RecipientManagementScreen() {
   const [editRow, setEditRow] = useState<Recipient | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Recipient | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const { page, pageSize, total, totalPages, from, to, setPage, setTotal, resetPage, handlePageSizeChange } = usePagination()
   const isFirstRender = useRef(true)
 
@@ -110,7 +111,17 @@ export function RecipientManagementScreen() {
   async function confirmDelete(): Promise<void> {
     if (!deleteTarget) return
     setDeleting(true)
-    await supabase.from('beneficiaries').delete().eq('id', deleteTarget.id)
+    setDeleteError(null)
+    const { error } = await supabase.from('beneficiaries').delete().eq('id', deleteTarget.id)
+    if (error) {
+      setDeleteError(
+        error.code === '23503'
+          ? 'This recipient has existing inquiry or dispensing records and cannot be deleted.'
+          : error.message
+      )
+      setDeleting(false)
+      return
+    }
     setDeleting(false)
     setDeleteTarget(null)
     await load()
@@ -245,8 +256,13 @@ export function RecipientManagementScreen() {
                   </p>
                 </div>
               </div>
+              {deleteError && (
+                <p role="alert" className="mt-1 mb-4 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {deleteError}
+                </p>
+              )}
               <div className="flex gap-3 justify-end">
-                <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">
+                <button onClick={() => { setDeleteTarget(null); setDeleteError(null) }} className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">
                   Cancel
                 </button>
                 <button

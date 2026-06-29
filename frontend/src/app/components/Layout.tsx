@@ -36,8 +36,6 @@ const NAV_GROUPS: NavGroup[] = [
         id: 'donors',
         label: 'Donor Management',
         icon: <Users className="w-[18px] h-[18px]" />,
-        // Milky Way and Mom's Act donors are pre-screened externally
-        programs: ['All', 'Supsup Todo'],
       },
     ],
   },

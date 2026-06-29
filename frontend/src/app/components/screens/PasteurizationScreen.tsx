@@ -74,10 +74,8 @@ export function PasteurizationScreen() {
       pasteurized_at: String(form.get('pasteurized_at')) || new Date().toISOString(),
     })
 
-    if (!error) {
-      // Advance batch from pre_test_passed -> pasteurized
-      await supabase.from('batches').update({ status: 'pasteurized' }).eq('id', batchId)
-    } else {
+    // DB trigger apply_pasteurization_to_batch handles batch status → pasteurized automatically.
+    if (error) {
       console.error('Pasteurization insert error:', error)
     }
 
