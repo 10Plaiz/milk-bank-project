@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Plus, X, Info } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '../shared/PageHeader'
 import { StatusBadge } from '../shared/StatusBadge'
 import { supabase } from '../../../lib/supabase'
@@ -77,6 +78,9 @@ export function PasteurizationScreen() {
     // DB trigger apply_pasteurization_to_batch handles batch status → pasteurized automatically.
     if (error) {
       console.error('Pasteurization insert error:', error)
+      toast.error('Pasteurization could not be recorded. Confirm the batch has passed pre-testing and try again.')
+      setSaving(false)
+      return
     }
 
     setSaving(false)

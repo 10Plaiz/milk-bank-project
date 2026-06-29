@@ -397,21 +397,21 @@ begin
         where id = new.batch_id and status = 'raw';
     when new.stage = 'pre_pasteurization'  and new.result = 'passed'  then
       update public.batches set status = 'pre_test_passed'
-        where id = new.batch_id;
+        where id = new.batch_id and status = 'pre_testing';
     when new.stage = 'pre_pasteurization'  and new.result = 'failed'  then
       update public.batches set status = 'discarded',
         discarded_reason = 'failed pre-pasteurization lab test'
-        where id = new.batch_id;
+        where id = new.batch_id and status = 'pre_testing';
     when new.stage = 'post_pasteurization' and new.result = 'pending' then
       update public.batches set status = 'post_testing'
         where id = new.batch_id and status = 'pasteurized';
     when new.stage = 'post_pasteurization' and new.result = 'passed'  then
       update public.batches set status = 'ready'
-        where id = new.batch_id;
+        where id = new.batch_id and status = 'post_testing';
     when new.stage = 'post_pasteurization' and new.result = 'failed'  then
       update public.batches set status = 'discarded',
         discarded_reason = 'failed post-pasteurization lab test'
-        where id = new.batch_id;
+        where id = new.batch_id and status = 'post_testing';
     else null;
   end case;
   return new;

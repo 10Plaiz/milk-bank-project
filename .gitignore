@@ -21,7 +21,6 @@ Thumbs.db
 
 # Oops
 CLAUDE.md
-.claude/
 
 # SQL Dependencies
 seed.sql

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
+import { Toaster } from 'sonner'
 import type { ActiveProgram, AppUser, Screen, CreateAccessAccountInput } from './types'
 import { ProgramContext } from '../lib/programContext'
 import { Layout } from './components/Layout'
@@ -277,6 +278,7 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </Layout>
+      <Toaster position="bottom-right" richColors />
     </ProgramContext.Provider>
   )
 }

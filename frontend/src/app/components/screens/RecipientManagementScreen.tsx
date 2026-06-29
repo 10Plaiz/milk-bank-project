@@ -91,8 +91,8 @@ export function RecipientManagementScreen() {
       guardian_name: String(form.get('guardian_name')),
       baby_name: String(form.get('baby_name')),
       hospital: String(form.get('hospital')),
-      contact_number: String(form.get('contact_number')),
-      contact_email: null,
+      contact_number: String(form.get('contact_number')).trim() || null,
+      contact_email: String(form.get('contact_email')).trim().toLowerCase() || null,
       nicu_eligible: isNicu,
       age_of_baby_days: ageOfBabyDays,
     }
@@ -353,19 +353,37 @@ export function RecipientManagementScreen() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                       <label htmlFor="rcp-contact" className="text-sm font-medium text-zinc-700">Contact Number <span className="text-pink-400">*</span></label>
-                      <input id="rcp-contact" name="contact_number" required type="tel" defaultValue={editRow?.contact_number ?? ''} placeholder="09XXXXXXXXX" autoComplete="tel" spellCheck={false} maxLength={11} className="w-full rounded-xl bg-zinc-50/50 border border-zinc-200 px-4 py-2.5 text-sm font-mono outline-none focus-visible:border-pink-300 focus-visible:ring-2 focus-visible:ring-pink-100 transition-all placeholder:text-zinc-400" />
+                      <input id="rcp-contact" name="contact_number" required type="tel" defaultValue={editRow?.contact_number ?? ''} placeholder="09XXXXXXXXX…" autoComplete="tel" spellCheck={false} maxLength={20} className="w-full rounded-xl bg-zinc-50/50 border border-zinc-200 px-4 py-2.5 text-sm font-mono outline-none focus-visible:border-pink-300 focus-visible:ring-2 focus-visible:ring-pink-100 transition-all placeholder:text-zinc-400" />
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="rcp-aob" className="text-sm font-medium text-zinc-700">Age of Baby (AOB)</label>
+                      <label htmlFor="rcp-email" className="text-sm font-medium text-zinc-700">
+                        Email Address
+                        <span className="ml-1.5 text-[11px] font-normal text-zinc-400">(for notifications)</span>
+                      </label>
                       <input
-                        id="rcp-aob"
-                        name="aob_text"
-                        placeholder="e.g., 28 weeks…"
-                        defaultValue={editRow?.age_of_baby_days ? `${Math.floor(editRow.age_of_baby_days / 7)} weeks` : ''}
-                        maxLength={20}
+                        id="rcp-email"
+                        name="contact_email"
+                        type="email"
+                        defaultValue={editRow?.contact_email ?? ''}
+                        placeholder="guardian@email.com…"
+                        autoComplete="email"
+                        spellCheck={false}
+                        maxLength={255}
                         className="w-full rounded-xl bg-zinc-50/50 border border-zinc-200 px-4 py-2.5 text-sm outline-none focus-visible:border-pink-300 focus-visible:ring-2 focus-visible:ring-pink-100 transition-all placeholder:text-zinc-400"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label htmlFor="rcp-aob" className="text-sm font-medium text-zinc-700">Age of Baby (AOB)</label>
+                    <input
+                      id="rcp-aob"
+                      name="aob_text"
+                      placeholder="e.g., 28 weeks…"
+                      defaultValue={editRow?.age_of_baby_days ? `${Math.floor(editRow.age_of_baby_days / 7)} weeks` : ''}
+                      maxLength={20}
+                      className="w-full rounded-xl bg-zinc-50/50 border border-zinc-200 px-4 py-2.5 text-sm outline-none focus-visible:border-pink-300 focus-visible:ring-2 focus-visible:ring-pink-100 transition-all placeholder:text-zinc-400"
+                    />
                   </div>
 
                 </div>

@@ -48,7 +48,7 @@ export function InquiryWaitingListScreen() {
 
     const [{ data: inq, count }, { data: bens }, { count: wCount }] = await Promise.all([
       inqQuery,
-      supabase.from('beneficiaries').select('id,guardian_name,baby_name,nicu_eligible').order('guardian_name'),
+      supabase.from('beneficiaries').select('id,guardian_name,baby_name,nicu_eligible').eq('nicu_eligible', true).order('guardian_name'),
       supabase.from('inquiries').select('id', { count: 'exact', head: true }).eq('status', 'waiting'),
     ])
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Plus, X, FlaskConical } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '../shared/PageHeader'
 import { StatusBadge } from '../shared/StatusBadge'
 import { supabase } from '../../../lib/supabase'
@@ -106,7 +107,12 @@ export function LabTestingScreen() {
       notes:             sendNotes.trim() || null,
     })
 
-    if (error) { console.error('Send to lab:', error); setSending(false); return }
+    if (error) {
+      console.error('Send to lab:', error)
+      toast.error('Sample could not be sent to lab. A pending result may already exist for this batch.')
+      setSending(false)
+      return
+    }
 
     // DB trigger apply_lab_result_to_batch handles batch status update automatically.
     setSending(false)
@@ -138,7 +144,12 @@ export function LabTestingScreen() {
       })
       .eq('id', resolving.id)
 
-    if (error) { console.error('Enter result:', error); setResolveSaving(false); return }
+    if (error) {
+      console.error('Enter result:', error)
+      toast.error('Lab result could not be saved. The batch may be in an unexpected state.')
+      setResolveSaving(false)
+      return
+    }
 
     // DB trigger handles batch status update automatically.
     // Create bottle only when post-pasteurization passes (no DB trigger for this yet).

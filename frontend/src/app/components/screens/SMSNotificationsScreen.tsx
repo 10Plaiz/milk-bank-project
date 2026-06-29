@@ -6,8 +6,6 @@ import { supabase } from '../../../lib/supabase'
 import { formatDate, toTitle } from '../../exportUtils'
 import type { AppUser } from '../../types'
 
-const TEMPLATE_STORAGE_KEY = 'mhmbms_notification_templates'
-
 const DEFAULT_TEMPLATES = {
   milkAvailable:
     'Magandang araw po! Ang hinihintay na gatas para kay [BABY_NAME] ay handa na. Pumunta po kayo sa Makati Human Milk Bank sa 1126 Rodriguez Ave., Brgy. Bangkal, Makati City para sa dispensing. Para sa katanungan, tawagan po kami sa 8888-7777.',
@@ -56,22 +54,15 @@ const VAR_LABELS: Record<VarKey, string> = {
 
 const EMPTY_VARS: VarValues = { BABY_NAME: '', VOLUME: '', TOTAL_FEE: '', STATUS: '' }
 
-function loadTemplates(): Templates {
-  try {
-    const saved = localStorage.getItem(TEMPLATE_STORAGE_KEY)
-    if (saved) return { ...DEFAULT_TEMPLATES, ...JSON.parse(saved) }
-  } catch { /* ignore */ }
-  return DEFAULT_TEMPLATES
-}
-
 export function SMSNotificationsScreen({ user }: { user: AppUser }) {
   const isAdmin = user.role === 'Admin' || user.role === 'Administrator'
 
   // Template editing
-  const [templates, setTemplates]         = useState<Templates>(loadTemplates)
+  const [templates, setTemplates]         = useState<Templates>(DEFAULT_TEMPLATES)
   const [editKey, setEditKey]             = useState<keyof Templates | null>(null)
   const [draftText, setDraftText]         = useState('')
   const [templateSaved, setTemplateSaved] = useState(false)
+  const [templateSaving, setTemplateSaving] = useState(false)
 
   // Notification log
   const [logs, setLogs] = useState<EmailLog[]>([])
@@ -111,6 +102,24 @@ export function SMSNotificationsScreen({ user }: { user: AppUser }) {
   }, [])
 
   useEffect(() => { void fetchLogs() }, [fetchLogs])
+
+  // Load templates from DB on mount — overrides in-memory defaults with any admin-saved versions
+  useEffect(() => {
+    async function loadTemplatesFromDb(): Promise<void> {
+      const { data } = await supabase
+        .from('notification_templates')
+        .select('id,body')
+      if (!data || data.length === 0) return
+      const loaded: Partial<Templates> = {}
+      for (const row of data) {
+        if (row.id in DEFAULT_TEMPLATES) {
+          loaded[row.id as keyof Templates] = row.body as string
+        }
+      }
+      setTemplates(t => ({ ...t, ...loaded }))
+    }
+    void loadTemplatesFromDb()
+  }, [])
 
   // Debounced beneficiary search
   useEffect(() => {
@@ -236,16 +245,28 @@ export function SMSNotificationsScreen({ user }: { user: AppUser }) {
     setTemplateSaved(false)
   }
 
-  function saveTemplate() {
-    if (!editKey) return
-    const updated = { ...templates, [editKey]: draftText }
-    setTemplates(updated)
-    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(updated))
+  async function saveTemplate(): Promise<void> {
+    if (!editKey || templateSaving) return
+    setTemplateSaving(true)
+
+    const { error } = await supabase
+      .from('notification_templates')
+      .upsert({ id: editKey, body: draftText })
+
+    setTemplateSaving(false)
+
+    if (error) {
+      console.error('Template save failed:', error)
+      return
+    }
+
+    setTemplates(t => ({ ...t, [editKey]: draftText }))
     setTemplateSaved(true)
     setTimeout(() => setTemplateSaved(false), 2000)
   }
 
   function cancelEdit() {
+    if (templateSaving) return
     setEditKey(null)
     setDraftText('')
   }
@@ -493,17 +514,19 @@ export function SMSNotificationsScreen({ user }: { user: AppUser }) {
                     )}
                     <button
                       onClick={cancelEdit}
-                      className="px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                      disabled={templateSaving}
+                      className="px-4 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={saveTemplate}
-                      className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90"
+                      onClick={() => void saveTemplate()}
+                      disabled={templateSaving}
+                      className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: '#eea4bb' }}
                     >
                       <Save className="w-3.5 h-3.5" aria-hidden="true" />
-                      Save Template
+                      {templateSaving ? 'Saving…' : 'Save Template'}
                     </button>
                   </div>
                 </div>
